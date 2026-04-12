@@ -6,13 +6,12 @@ import pygame_gui
 from pygame_widgets.button import Button
 from pygame.locals import *
 
-# Списки для літер та цифр
 files = "abcdefgh"
-ranks = "87654321"  # Рядок 0 у масиві — це 8-й ряд шахівниці
+ranks = "87654321" 
 
-# Створюємо словник {(row, col): "notation"}
-coord_to_notation = {
-    (r, c): files[c] + ranks[r] 
+#notation to coords dictionary
+notation_to_coord = {
+    files[c] + ranks[r] : (r,c)
     for r in range(8) 
     for c in range(8)
 }
@@ -43,19 +42,46 @@ def queen_vision(board, coords_list, queens_quantity):
                         break
                 else:
                     break
-def delete_queen(board):
+
+def delete_queen(board, chosen_square):
+    if chosen_square not in notation_to_coord:
+        print("Please enter a proper square!")
+    else:
+        target_coords = notation_to_coord[chosen_square]
+        if target_coords in coords_list:
+            y, x = target_coords
+            board[y][x] = 0
+            print(f"Queen on {chosen_square} is deleted!")
+            coords_list.remove(target_coords)
+        elif target_coords not in coords_list:
+            print("Enter a square with a queen on it")   
     return board
+
+def handle_delete_queen_button():
+    input_text = TEXT_INPUT.get_text()
+    delete_queen(board, input_text)
+    TEXT_INPUT.set_text("")
+
 def board_init():
     board = [[0 for _ in range(8)] for _ in range(8)]
     return board
 
-def board_draw():
+def board_draw(font,text_col):
     for i in range(8):
         for j in range (8):
+            square_position = (i, j)
             if (i + j) % 2 == 0:
                 pygame.draw.rect(screen, (255, 255, 255), [20 + square_size * j, 20 + square_size * i, 120, 120], 0)
             elif (i + j) % 2 != 0:
                 pygame.draw.rect(screen, (0, 0, 0), [20 + square_size * j, 20 + square_size * i, 120, 120], 0)
+            if i == 7:
+                text = font.render(files[j], True, text_col)
+                screen.blit(text,(120 + square_size * j, 110 + square_size * i))
+            if j == 0:
+                text = font.render(ranks[i], True, text_col)
+                screen.blit(text,(25 + square_size * j, 25 + square_size * i))
+
+            
 
 def random_pieces_spawn(board,conf):
     if conf == 0:
@@ -87,6 +113,7 @@ def random_pieces_spawn(board,conf):
 
 #Pygame display settings and board initialisation
 pygame.init()
+text_font = pygame.font.SysFont("Arial", 24, True, False)
 board = board_init()
 board = random_pieces_spawn(board,1)
 HEIGHT = 1200
@@ -95,6 +122,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 CLOCK = pygame.time.Clock()
 MANAGER = pygame_gui.UIManager((WIDTH, HEIGHT))
 pygame.display.set_caption("Window")
+
 ##Images download block
 try:
     queen_img = pygame.image.load("sprites/white/queen.png")
@@ -123,24 +151,25 @@ button2 = Button(
     fontSize=28, margin=20,
     inactiveColour=(59, 89, 152),
     pressedColour=(59, 89, 152), radius=20,
-    onClick = lambda: random_pieces_spawn(board,2)
+    onClick = handle_delete_queen_button
 )
-text_input = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((WIDTH - WIDTH*5/6,HEIGHT - 80), (650, 50), manager = MANAGER, object_id = "#Text_input"))
+TEXT_INPUT = pygame_gui.elements.UITextEntryLine(relative_rect=pygame.Rect((WIDTH - WIDTH*5/6,HEIGHT - 80), (650, 50), manager = MANAGER, object_id = "#txt_input"))
+
 #Pygame running segment 
 while running:
     UI_REFRESH_RATE = CLOCK.tick(60)/1000
     screen.fill((200,200,240))
-    board_draw()
+    board_draw(text_font, (0, 112, 99))
     pieces_draw()
     events = pygame.event.get()
     for event in events:
+        MANAGER.process_events(event)
         if event.type == pygame.QUIT:
             running = False
-        MANAGER.process_events(event)
-        if event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED and event.ui_object_id == "#Text_input":
+        if event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED and event.ui_element == TEXT_INPUT:
             pass
     MANAGER.update(UI_REFRESH_RATE)
     MANAGER.draw_ui(screen)
     pw.update(events)
-    pygame.display.flip()
+    pygame.display.update()
 pygame.quit()
